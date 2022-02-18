@@ -202,6 +202,8 @@ NAN_METHOD(injectPID) {
 
 	uint32_t value0 = info[0]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[0]).FromJust();
 	Local<Value> value1;
+	
+	(info[1]->ToString(Nan::GetCurrentContext())).ToLocal(&value1);
 
 	DWORD arg0(value0);
 	String::Utf8Value arg1(Isolate::GetCurrent(), value1);
