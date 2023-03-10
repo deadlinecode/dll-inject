@@ -1,6 +1,6 @@
 #include "functions.h"
 #include <SDKDDKVer.h>
-#define WIN32_LEAN_AND_MEAN 
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define UNICODE // Using unicode - so windows functions take wchars
 #include <TlHelp32.h>
@@ -8,14 +8,16 @@
 
 using namespace v8;
 
-static HANDLE getProcess(const char* processName) {
+static HANDLE getProcess(const char *processName)
+{
 	wchar_t wProcessName[MAX_PATH];
 	mbstate_t mbstate;
 	mbsrtowcs_s(NULL, wProcessName, &processName, MAX_PATH, &mbstate);
 
 	// Take a snapshot of processes currently running
 	HANDLE runningProcesses = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (runningProcesses == INVALID_HANDLE_VALUE) {
+	if (runningProcesses == INVALID_HANDLE_VALUE)
+	{
 		return NULL;
 	}
 
@@ -24,12 +26,15 @@ static HANDLE getProcess(const char* processName) {
 
 	// Find the desired process
 	BOOL res = Process32First(runningProcesses, &pe);
-	while (res) {
-		if (wcscmp(pe.szExeFile, wProcessName) == 0) {
+	while (res)
+	{
+		if (wcscmp(pe.szExeFile, wProcessName) == 0)
+		{
 			// Found the process
 			CloseHandle(runningProcesses);
 			HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
-			if (process == NULL) {
+			if (process == NULL)
+			{
 				// Process failed to open
 				return NULL;
 			}
@@ -44,10 +49,12 @@ static HANDLE getProcess(const char* processName) {
 	return NULL;
 }
 
-static HANDLE getProcessPID(DWORD pid) {
+static HANDLE getProcessPID(DWORD pid)
+{
 	// Take a snapshot of processes currently running
 	HANDLE runningProcesses = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (runningProcesses == INVALID_HANDLE_VALUE) {
+	if (runningProcesses == INVALID_HANDLE_VALUE)
+	{
 		return NULL;
 	}
 
@@ -56,12 +63,15 @@ static HANDLE getProcessPID(DWORD pid) {
 
 	// Find the desired process
 	BOOL res = Process32First(runningProcesses, &pe);
-	while (res) {
-		if (pe.th32ProcessID == pid) {
+	while (res)
+	{
+		if (pe.th32ProcessID == pid)
+		{
 			// Found the process
 			CloseHandle(runningProcesses);
 			HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
-			if (process == NULL) {
+			if (process == NULL)
+			{
 				// Process failed to open
 				return NULL;
 			}
@@ -77,8 +87,10 @@ static HANDLE getProcessPID(DWORD pid) {
 }
 
 // Inject a DLL file into the given process
-static int injectHandle(HANDLE process, const char* dllFile) {
-	if (process == NULL) {
+static int injectHandle(HANDLE process, const char *dllFile)
+{
+	if (process == NULL)
+	{
 		// Process is not open
 		return 1;
 	}
@@ -86,12 +98,14 @@ static int injectHandle(HANDLE process, const char* dllFile) {
 	// Get full DLL path
 	char dllPath[MAX_PATH];
 	DWORD r = GetFullPathNameA(dllFile, MAX_PATH, dllPath, NULL);
-	if (r == 0) {
+	if (r == 0)
+	{
 		// Getting path name failed
 		CloseHandle(process);
 		return 2;
 	}
-	else if (r > MAX_PATH) {
+	else if (r > MAX_PATH)
+	{
 		// Buffer too small for path name
 		CloseHandle(process);
 		return 3;
@@ -102,13 +116,15 @@ static int injectHandle(HANDLE process, const char* dllFile) {
 
 	// Allocate memory in the processs for the DLL path, and then write it there
 	LPVOID remotePathSpace = VirtualAllocEx(process, NULL, strlen(dllPath) + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	if (!remotePathSpace) {
+	if (!remotePathSpace)
+	{
 		CloseHandle(process);
 		// Failed to allocate memory
 		return 4;
 	}
 
-	if (!WriteProcessMemory(process, remotePathSpace, dllPath, strlen(dllPath) + 1, NULL)) {
+	if (!WriteProcessMemory(process, remotePathSpace, dllPath, strlen(dllPath) + 1, NULL))
+	{
 		// Failed to write memory
 		CloseHandle(process);
 		return 5;
@@ -117,7 +133,8 @@ static int injectHandle(HANDLE process, const char* dllFile) {
 	// Load the DLL with CreateRemoteThread + LoadLibraryA
 	HANDLE remoteThread = CreateRemoteThread(process, NULL, NULL, (LPTHREAD_START_ROUTINE)LoadLib, (LPVOID)remotePathSpace, NULL, NULL);
 
-	if (remoteThread == NULL) {
+	if (remoteThread == NULL)
+	{
 		// Failed to create remote thread to load the DLL
 		CloseHandle(process);
 		return 6;
@@ -129,9 +146,11 @@ static int injectHandle(HANDLE process, const char* dllFile) {
 }
 
 // Returns true iff a process with the given name is running
-bool isProcessRunningInternal(const char* processName) {
+bool isProcessRunningInternal(const char *processName)
+{
 	HANDLE process = getProcess(processName);
-	if (process == NULL) {
+	if (process == NULL)
+	{
 		return false;
 	}
 	CloseHandle(process);
@@ -139,9 +158,11 @@ bool isProcessRunningInternal(const char* processName) {
 }
 
 // Returns true iff a process with the given pid is running
-bool isProcessRunningInternalPID(DWORD pid) {
+bool isProcessRunningInternalPID(DWORD pid)
+{
 	HANDLE process = getProcessPID(pid);
-	if (process == NULL) {
+	if (process == NULL)
+	{
 		return false;
 	}
 	CloseHandle(process);
@@ -149,20 +170,29 @@ bool isProcessRunningInternalPID(DWORD pid) {
 }
 
 // Inject a DLL file into the process with the given name
-int injectInternal(const char* processName, const char* dllFile) {
+int injectInternal(const char *processName, const char *dllFile)
+{
 	return injectHandle(getProcess(processName), dllFile);
 }
 
 // Inject a DLL file into the process with the given pid
-int injectInternalPID(DWORD pid, const char* dllFile) {
+int injectInternalPID(DWORD pid, const char *dllFile)
+{
 	return injectHandle(getProcessPID(pid), dllFile);
 }
 
-NAN_METHOD(inject) {
-	if (info.Length() != 2) {
+NAN_METHOD(inject)
+{
+	if (info.Length() != 2)
+	{
+		Local<Int32> res = Nan::New<Int32>(8);
+		info.GetReturnValue().Set(res);
 		return;
 	}
-	if (!info[0]->IsString() || !info[1]->IsString()) {
+	if (!info[0]->IsString() || !info[1]->IsString())
+	{
+		Local<Int32> res = Nan::New(9);
+		info.GetReturnValue().Set(res);
 		return;
 	}
 
@@ -175,12 +205,13 @@ NAN_METHOD(inject) {
 	String::Utf8Value arg0(Isolate::GetCurrent(), value0);
 	String::Utf8Value arg1(Isolate::GetCurrent(), value1);
 
-	if (!(*arg0) || !(*arg1)) {
+	if (!(*arg0) || !(*arg1))
+	{
 		return;
 	}
 
-	const char* processName = *arg0;
-	const char* dllName = *arg1;
+	const char *processName = *arg0;
+	const char *dllName = *arg1;
 
 	int val = injectInternal(processName, dllName);
 
@@ -188,32 +219,36 @@ NAN_METHOD(inject) {
 	info.GetReturnValue().Set(res);
 }
 
-NAN_METHOD(injectPID) {
-	if (info.Length() != 2) {
+NAN_METHOD(injectPID)
+{
+	if (info.Length() != 2)
+	{
 		Local<Int32> res = Nan::New<Int32>(8);
 		info.GetReturnValue().Set(res);
 		return;
 	}
-	if (!info[0]->IsNumber() || !info[1]->IsString()) {
+	if (!info[0]->IsUint32() || !info[1]->IsString())
+	{
 		Local<Int32> res = Nan::New(9);
 		info.GetReturnValue().Set(res);
 		return;
 	}
 
 	uint32_t value0 = info[0]->IsUndefined() ? 0 : Nan::To<uint32_t>(info[0]).FromJust();
-	Local<Value> value1;
-	
-	(info[1]->ToString(Nan::GetCurrentContext())).ToLocal(&value1);
-
 	DWORD arg0(value0);
+
+	Local<Value> value1;
+	(info[1]->ToString(Nan::GetCurrentContext())).ToLocal(&value1);
 	String::Utf8Value arg1(Isolate::GetCurrent(), value1);
 
-	if (!(*arg1)) {
+	if (!(*arg1))
+	{
 		Local<Int32> res = Nan::New(10);
 		info.GetReturnValue().Set(res);
 		return;
 	}
-	const char* dllName = *arg1;
+
+	const char *dllName = *arg1;
 
 	int val = injectInternalPID(arg0, dllName);
 
@@ -223,10 +258,12 @@ NAN_METHOD(injectPID) {
 
 NAN_METHOD(isProcessRunning)
 {
-	if (info.Length() != 1) {
+	if (info.Length() != 1)
+	{
 		return;
 	}
-	if (!info[0]->IsString()) {
+	if (!info[0]->IsString())
+	{
 		return;
 	}
 
@@ -236,11 +273,12 @@ NAN_METHOD(isProcessRunning)
 
 	String::Utf8Value arg(Isolate::GetCurrent(), value);
 
-	if (!(*arg)) {
+	if (!(*arg))
+	{
 		return;
 	}
 
-	const char* processName = *arg;
+	const char *processName = *arg;
 
 	bool val = isProcessRunningInternal(processName);
 
@@ -250,10 +288,12 @@ NAN_METHOD(isProcessRunning)
 
 NAN_METHOD(isProcessRunningPID)
 {
-	if (info.Length() != 1) {
+	if (info.Length() != 1)
+	{
 		return;
 	}
-	if (!info[0]->IsUint32()) {
+	if (!info[0]->IsUint32())
+	{
 		return;
 	}
 

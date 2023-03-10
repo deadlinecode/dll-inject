@@ -1,6 +1,6 @@
 {
   "name": "dll-inject",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "LoadLibrary-based DLL injection for Windows | Based on node-dll-injector but finaly fixed for newer versions by h110m",
   "main": "index.js",
   "types": "./lib/index.d.ts",
