@@ -1,5 +1,7 @@
 name: Publish to NPM
-on: [pull_request]
+on:
+  pull_request:
+    branches: master
 jobs:
   build:
     runs-on: self-hosted
