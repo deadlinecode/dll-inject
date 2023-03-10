@@ -169,6 +169,17 @@ bool isProcessRunningInternalPID(DWORD pid)
 	return true;
 }
 
+// Returns PID if a process with the given name is running, else -1
+int getProcessPIDByNameInternal(const char* processName) {
+	HANDLE process = getProcess(processName);
+	if (process == NULL) {
+		return -1;
+	}
+	int PID = GetProcessId(process);
+	CloseHandle(process);
+	return PID;
+}
+
 // Inject a DLL file into the process with the given name
 int injectInternal(const char *processName, const char *dllFile)
 {
@@ -304,5 +315,33 @@ NAN_METHOD(isProcessRunningPID)
 	bool val = isProcessRunningInternalPID(arg);
 
 	Local<Boolean> res = Nan::New(val);
+	info.GetReturnValue().Set(res);
+}
+
+NAN_METHOD(getProcessPIDByName)
+{
+	
+	if (info.Length() != 1) {
+		return;
+	}
+	if (!info[0]->IsString()) {
+		return;
+	}
+
+	Local<Value> value;
+
+	(info[0]->ToString(Nan::GetCurrentContext())).ToLocal(&value);
+
+	String::Utf8Value arg(Isolate::GetCurrent(), value);
+
+	if (!(*arg)) {
+		return;
+	}
+
+	const char* processName = *arg;
+
+	int val = getProcessPIDByNameInternal(processName);
+
+	Local<Int32> res = Nan::New(val);
 	info.GetReturnValue().Set(res);
 }
