@@ -10,5 +10,6 @@ NAN_METHOD(inject);
 NAN_METHOD(injectPID);
 NAN_METHOD(isProcessRunning);
 NAN_METHOD(isProcessRunningPID);
+NAN_METHOD(getPIDByName);
 
 #endif
