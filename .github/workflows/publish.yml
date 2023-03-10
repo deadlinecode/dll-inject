@@ -1,5 +1,5 @@
 name: Publish to NPM
-on: [push, pull_request]
+on: [pull_request]
 jobs:
   build:
     runs-on: self-hosted
@@ -11,8 +11,6 @@ jobs:
         with:
           node-version: '14.x'
           registry-url: 'https://registry.npmjs.org'
-      - name: Install dependencies and build 🔧
-        run: npm ci && npm run build
       - name: Publish package on NPM 📦
         run: npm publish
         env:
