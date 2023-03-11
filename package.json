@@ -1,11 +1,11 @@
 {
   "name": "@ffxiv-teamcraft/dll-inject",
-  "version": "0.0.4",
-  "description": "LoadLibrary-based DLL injection for Windows | Based on node-dll-injector but finally fixed for newer versions by h110m",
+  "version": "0.0.5",
+  "description": "LoadLibrary-based DLL injection for Windows aiming at injecting stuff for FFXIV",
   "main": "index.js",
   "types": "./lib/index.d.ts",
-  "repository": "https://github.com/h110m/dll-inject.git",
-  "author": "h110m",
+  "repository": "https://github.com/Supamiu/dll-inject.git",
+  "author": "Supamiu",
   "license": "MIT",
   "gypfile": "true",
   "scripts": {

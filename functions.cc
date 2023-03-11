@@ -4,9 +4,95 @@
 #include <windows.h>
 #define UNICODE // Using unicode - so windows functions take wchars
 #include <TlHelp32.h>
+#include <AclAPI.h>
 #include <wchar.h>
+#include <string>
+#include <iostream>
 
 using namespace v8;
+
+std::string GetLastErrorString()
+{
+    // Get last error ID, early return of "" if no error
+    DWORD errorId = GetLastError();
+    if (errorId == 0) {
+        return std::string();
+    }
+
+    // Get Windows-allocated string for error
+    LPSTR messageBuffer = nullptr;
+    size_t size = FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        errorId,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPSTR)&messageBuffer,
+        0,
+        NULL
+    );
+    
+    // Copy it into our own string
+    std::string message(messageBuffer, size);
+    
+    // Free the Win buffer
+    LocalFree(messageBuffer);
+            
+    return message;
+}
+
+static bool winterACLShit(DWORD processId)
+{
+    HANDLE processHandle = nullptr;
+
+    // Get process handle for specified process id
+    processHandle = OpenProcess(
+        WRITE_DAC | READ_CONTROL | PROCESS_QUERY_LIMITED_INFORMATION,
+        FALSE,
+        processId);
+    if (processHandle == NULL) {
+        std::cerr << "Error on OpenProcess for pid " << processId << ": " << GetLastErrorString() << std::endl;
+
+        return false;
+    }
+
+    PACL dacl = nullptr;
+    if (GetSecurityInfo(
+            GetCurrentProcess(),
+            SE_KERNEL_OBJECT,
+            DACL_SECURITY_INFORMATION,
+            nullptr, nullptr,
+            &dacl,
+            nullptr, nullptr
+        ) != ERROR_SUCCESS) {
+        std::cerr << "Error on GetSecurityInfo: " << GetLastErrorString() << std::endl;
+
+        CloseHandle(processHandle);
+        return false;
+    }
+
+    if (SetSecurityInfo(
+            processHandle,
+            SE_KERNEL_OBJECT,
+            DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION,
+            nullptr, nullptr,
+            dacl,
+            nullptr
+        ) != ERROR_SUCCESS) {
+        std::cerr << "Error on SetSecurityInfo for pid " << processId << ": " << GetLastErrorString() << std::endl;
+
+        CloseHandle(processHandle);
+        return false;
+    }
+
+    CloseHandle(processHandle);
+    return true;
+}
+
+static HANDLE getProcessPID(DWORD pid)
+{
+	winterACLShit(pid);
+	return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+}
 
 static HANDLE getProcess(const char *processName)
 {
@@ -32,7 +118,7 @@ static HANDLE getProcess(const char *processName)
 		{
 			// Found the process
 			CloseHandle(runningProcesses);
-			HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
+			HANDLE process = getProcessPID(pe.th32ProcessID);
 			if (process == NULL)
 			{
 				// Process failed to open
@@ -47,11 +133,6 @@ static HANDLE getProcess(const char *processName)
 	// Couldn't find the process
 	CloseHandle(runningProcesses);
 	return NULL;
-}
-
-static HANDLE getProcessPID(DWORD pid)
-{
-	return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 }
 
 // Inject a DLL file into the given process
@@ -138,7 +219,8 @@ bool isProcessRunningInternalPID(DWORD pid)
 }
 
 // Returns PID if a process with the given name is running, else -1
-int getPIDByNameInternal(const char* processName) {
+int getPIDByNameInternal(const char *processName)
+{
 	HANDLE process = getProcess(processName);
 	if (process == NULL)
 	{

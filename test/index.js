@@ -1,12 +1,13 @@
 
-const injector = require('dll-injector');
+const injector = require('../index');
 
-if (injector.isProcessRunning('notepad.exe')) {
-    const error = injector.inject('notepad.exe', 'testdll.dll');
+const pid = injector.getPIDByName('ffxiv_dx11.exe');
 
-    if (!error) {
-        console.log('Successfully injected!');
-    } else {
-        console.log('Injection failed. Error Code:', error);
-    }
+const error = injector.injectPID(pid, 'testdll.dll');
+
+if (!error) {
+    console.log('Successfully injected!');
+} else {
+    console.log('Injection failed. Error Code:', error);
+
 }
