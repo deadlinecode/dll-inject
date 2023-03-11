@@ -1,6 +1,6 @@
 {
-  "name": "dll-inject",
-  "version": "0.0.3",
+  "name": "@ffxiv-teamcraft/dll-inject",
+  "version": "0.0.4",
   "description": "LoadLibrary-based DLL injection for Windows | Based on node-dll-injector but finally fixed for newer versions by h110m",
   "main": "index.js",
   "types": "./lib/index.d.ts",
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "bindings": "^1.3.0",
-    "nan": "^2.11.1",
-    "cross-spawn": "^5.1.0"
+    "cross-spawn": "^5.1.0",
+    "nan": "^2.11.1"
   }
 }
