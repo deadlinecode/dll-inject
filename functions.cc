@@ -51,39 +51,7 @@ static HANDLE getProcess(const char *processName)
 
 static HANDLE getProcessPID(DWORD pid)
 {
-	// Take a snapshot of processes currently running
-	HANDLE runningProcesses = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (runningProcesses == INVALID_HANDLE_VALUE)
-	{
-		return NULL;
-	}
-
-	PROCESSENTRY32 pe;
-	pe.dwSize = sizeof(PROCESSENTRY32);
-
-	// Find the desired process
-	BOOL res = Process32First(runningProcesses, &pe);
-	while (res)
-	{
-		if (pe.th32ProcessID == pid)
-		{
-			// Found the process
-			CloseHandle(runningProcesses);
-			HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
-			if (process == NULL)
-			{
-				// Process failed to open
-				return NULL;
-			}
-			// Return a handle to this process
-			return process;
-		}
-		res = Process32Next(runningProcesses, &pe);
-	}
-
-	// Couldn't find the process
-	CloseHandle(runningProcesses);
-	return NULL;
+	return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 }
 
 // Inject a DLL file into the given process
@@ -172,7 +140,8 @@ bool isProcessRunningInternalPID(DWORD pid)
 // Returns PID if a process with the given name is running, else -1
 int getPIDByNameInternal(const char* processName) {
 	HANDLE process = getProcess(processName);
-	if (process == NULL) {
+	if (process == NULL)
+	{
 		return -1;
 	}
 	int PID = GetProcessId(process);
@@ -320,11 +289,13 @@ NAN_METHOD(isProcessRunningPID)
 
 NAN_METHOD(getPIDByName)
 {
-	
-	if (info.Length() != 1) {
+
+	if (info.Length() != 1)
+	{
 		return;
 	}
-	if (!info[0]->IsString()) {
+	if (!info[0]->IsString())
+	{
 		return;
 	}
 
@@ -334,11 +305,12 @@ NAN_METHOD(getPIDByName)
 
 	String::Utf8Value arg(Isolate::GetCurrent(), value);
 
-	if (!(*arg)) {
+	if (!(*arg))
+	{
 		return;
 	}
 
-	const char* processName = *arg;
+	const char *processName = *arg;
 
 	int val = getPIDByNameInternal(processName);
 
