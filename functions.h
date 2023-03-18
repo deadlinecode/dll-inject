@@ -6,7 +6,6 @@
 // Example top-level functions. These functions demonstrate how to return various js types.
 // Implementations are in functions.cc
 
-NAN_METHOD(inject);
 NAN_METHOD(injectPID);
 NAN_METHOD(isProcessRunning);
 NAN_METHOD(isProcessRunningPID);
