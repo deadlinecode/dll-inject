@@ -160,8 +160,8 @@ static int injectHandle(HANDLE process, const wchar_t *dllPath)
 		CloseHandle(process);
 		return 3;
 	}
-	std::ifstream f(dllPath);
-	if (!f.good())
+
+	if (GetFileAttributesW(dllPath) == INVALID_FILE_ATTRIBUTES)
 	{
 		CloseHandle(process);
 		return 7;
@@ -171,7 +171,7 @@ static int injectHandle(HANDLE process, const wchar_t *dllPath)
 	LPVOID LoadLib = (LPVOID)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "LoadLibraryW");
 
 	// Allocate memory in the processs for the DLL path, and then write it there
-	LPVOID remotePathSpace = VirtualAllocEx(process, NULL, wcslen(dllPath) + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	LPVOID remotePathSpace = VirtualAllocEx(process, NULL, (wcslen(dllPath) + 1) * sizeof(wchar_t), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if (!remotePathSpace)
 	{
 		CloseHandle(process);
@@ -179,7 +179,7 @@ static int injectHandle(HANDLE process, const wchar_t *dllPath)
 		return 4;
 	}
 
-	if (!WriteProcessMemory(process, remotePathSpace, dllPath, wcslen(dllPath) + 1, NULL))
+	if (!WriteProcessMemory(process, remotePathSpace, dllPath, (wcslen(dllPath) + 1) * sizeof(wchar_t), NULL))
 	{
 		// Failed to write memory
 		CloseHandle(process);
@@ -244,10 +244,17 @@ int injectInternalPID(DWORD pid, const wchar_t *dllFile)
 	return injectHandle(getProcessPID(pid), dllFile);
 }
 
-std::wstring utf8_to_wstring(const String::Utf8Value &utf8Value)
+wchar_t *to_wstring(const String::Utf8Value &str)
 {
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-	return converter.from_bytes(*utf8Value);
+	int len = MultiByteToWideChar(CP_UTF8, NULL, *str, -1, NULL, 0);
+	wchar_t *output_buffer = new wchar_t[len + 1];
+	if (output_buffer)
+	{
+		MultiByteToWideChar(CP_UTF8, NULL, *str, -1, output_buffer, len);
+		output_buffer[len] = L'\0';
+	}
+
+	return output_buffer;
 }
 
 NAN_METHOD(injectPID)
@@ -278,12 +285,10 @@ NAN_METHOD(injectPID)
 		info.GetReturnValue().Set(res);
 		return;
 	}
+	wchar_t *dllName = to_wstring(arg1);
 
-	const std::wstring dllName = utf8_to_wstring(arg1);
-
-	std::wcout << dllName.c_str() << std::endl;
-
-	int val = injectInternalPID(arg0, dllName.c_str());
+	int val = injectInternalPID(arg0, dllName);
+	delete[] dllName;
 
 	Local<Int32> res = Nan::New(val);
 	info.GetReturnValue().Set(res);
